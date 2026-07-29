@@ -85,9 +85,12 @@ export default function App() {
           <div className="flex items-center gap-3">
             {/* Live indicator */}
             {data && !loading && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-                <span className="live-dot text-emerald-400 font-semibold">● Live (30s)</span>
-                <span className="text-slate-500" title={lastUpdated ? `Last fetched at ${lastUpdated.toLocaleTimeString()}` : undefined}>
+              <div className="hidden sm:flex items-center gap-2.5 text-xs text-slate-400">
+                <span className="live-pulse-ring flex items-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-ping inline-block" />
+                  LIVE 30S
+                </span>
+                <span className="text-slate-400 text-xs" title={lastUpdated ? `Last fetched at ${lastUpdated.toLocaleTimeString()}` : undefined}>
                   Updated {secondsAgo}s ago
                 </span>
               </div>

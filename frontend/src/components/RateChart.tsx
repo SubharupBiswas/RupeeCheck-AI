@@ -58,8 +58,15 @@ export default function RateChart({ data }: RateChartProps) {
       id: "history",
       label: "USD/INR Rate (Historical)",
       data: historicalDataset,
-      borderColor: "#0ea5e9",
-      backgroundColor: "rgba(14, 165, 233, 0.08)",
+      borderColor: "#38bdf8",
+      backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D } }) => {
+        const ctx = context.chart.ctx;
+        if (!ctx) return "rgba(56, 189, 248, 0.12)";
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, "rgba(56, 189, 248, 0.25)");
+        gradient.addColorStop(1, "rgba(56, 189, 248, 0.00)");
+        return gradient;
+      },
       borderWidth: 2,
       pointRadius: 0,
       pointHoverRadius: 5,
@@ -164,7 +171,7 @@ export default function RateChart({ data }: RateChartProps) {
           font: { size: 11, family: "Inter" },
           maxTicksLimit: 10,
           maxRotation: 0,
-          padding: 6, // prevent x-tick clipping at canvas edge
+          padding: 8, // prevent x-tick clipping at canvas edge
         },
         border: { color: "rgba(22, 43, 74, 0.8)" },
       },
@@ -177,7 +184,7 @@ export default function RateChart({ data }: RateChartProps) {
           color: "#64748b", // slate-500 — WCAG AA compliant on dark bg
           font: { size: 11, family: "JetBrains Mono" },
           callback: (val: string | number) => `₹${Number(val).toFixed(1)}`,
-          padding: 8, // prevent y-tick label clipping at canvas edge
+          padding: 10, // prevent y-tick label clipping at canvas edge
         },
         border: { color: "rgba(22, 43, 74, 0.8)" },
       },
