@@ -134,7 +134,11 @@ npx wrangler deploy
 * **Root directory:** `frontend`
 
 3. Add Environment Variable in Pages Dashboard:
-* `VITE_API_URL` = `https://<YOUR_WORKER_SUBDOMAIN>.workers.dev`
+* `VITE_API_URL` = `https://api-rupee.subnetmask.tech` (or `https://<YOUR_WORKER_SUBDOMAIN>.workers.dev`)
+
+4. Configure Domain Isolation (Optional Custom Domains):
+* **Frontend SPA Custom Domain:** `rupee.subnetmask.tech` (Cloudflare Pages)
+* **Backend API Custom Domain:** `api-rupee.subnetmask.tech` (Cloudflare Worker)
 
 ---
 
