@@ -166,6 +166,9 @@ npm run build
 npx wrangler pages deploy dist --project-name=usdinr-monitor
 ```
 
+> **Cloudflare Pages Environment Variable:**
+> Configure `VITE_API_URL` in Cloudflare Pages dashboard (Settings → Environment Variables) pointing to your deployed Worker API URL (e.g. `https://usdinr-monitor.<your-subdomain>.workers.dev`) for seamless API resolution.
+
 ---
 
 ## 🔒 Security & Privacy Considerations

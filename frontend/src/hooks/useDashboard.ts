@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { DashboardData } from "../types";
 
-const API_URL = "/api/dashboard";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = `${API_BASE_URL}/api/dashboard`;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function useDashboard() {
