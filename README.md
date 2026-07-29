@@ -1,14 +1,21 @@
-# 🇮🇳 USD/INR Exchange Rate Monitor
+<div align="center">
+
+# 🇮🇳 RupeeCheck-AI
+### Real-Time USD/INR Edge Tracking & AI Low-Rate Forecasting
 
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare_Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 [![Cloudflare D1](https://img.shields.io/badge/Cloudflare_D1-F38020?style=for-the-badge&logo=sqlite&logoColor=white)](https://developers.cloudflare.com/d1/)
-[![Cloudflare Workers AI](https://img.shields.io/badge/Workers_AI-Llama_3.1_8B-orange?style=for-the-badge&logo=meta&logoColor=white)](https://developers.cloudflare.com/workers-ai/)
-[![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript_5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_3.4-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Workers AI](https://img.shields.io/badge/Workers_AI-Llama_3.1_8B-FF4500?style=for-the-badge&logo=meta&logoColor=white)](https://developers.cloudflare.com/workers-ai/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![License MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](./LICENSE)
+
+<br />
 
 > An enterprise-grade, serverless edge web application that tracks real-time USD/INR exchange rates, forecasts 30-day rate lows using edge LLMs, renders a live glassmorphism analytics dashboard, and dispatches automated multi-channel notifications to Telegram and Discord—operating entirely within Cloudflare's free tier.
+
+</div>
 
 ---
 
@@ -67,7 +74,7 @@ flowchart TD
 | **Backend Compute** | Cloudflare Workers | Serverless V8 isolate execution, cron scheduling, HTTP API endpoints |
 | **Database** | Cloudflare D1 | Serverless SQLite relational storage (`exchange_rates`, `alert_log`) |
 | **AI / Machine Learning** | Cloudflare Workers AI | Llama 3.1 8B Instruct model running on Cloudflare edge GPUs |
-| **Frontend Framework** | React 18 + Vite 5 | SPA with custom hooks, memoized components, type-safe data fetching |
+| **Frontend Framework** | React 19 + Vite 5 | SPA with custom hooks, memoized components, type-safe data fetching |
 | **Data Visualization** | Chart.js 4 + react-chartjs-2 | Interactive dual-series rate trajectory chart (History + AI Forecast) |
 | **Styling** | Tailwind CSS 3 | Modern dark-mode UI with glassmorphic cards, glow badges, CSS animations |
 | **Infrastructure / CLI** | Wrangler CLI 3 | Declarative bindings, local D1 SQLite emulators, secret management |
@@ -102,7 +109,7 @@ flowchart TD
    ```
    *Edit `.dev.vars`:*
    ```env
-   TELEGRAM_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+   TELEGRAM_TOKEN="YOUR_TELEGRAM_TOKEN"
    TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
    DISCORD_WEBHOOK="https://discord.com/api/webhooks/YOUR/DISCORD_WEBHOOK_URL"
    ```
