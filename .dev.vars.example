@@ -1,0 +1,5 @@
+# Environment Secrets Template for Local Development
+# Copy this file to .dev.vars and replace with your actual keys
+TELEGRAM_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/YOUR/DISCORD_WEBHOOK_URL"
