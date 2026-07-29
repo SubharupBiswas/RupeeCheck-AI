@@ -197,19 +197,28 @@ export default function App() {
         )}
 
         {/* ── Footer ──────────────────────────────────────────────────── */}
-        <footer className="text-center text-slate-700 text-xs pb-6 space-y-1">
+        <footer className="text-center text-slate-500 text-xs pb-6 space-y-1">
           <p>
-            🔥 100% free · Cloudflare Workers + D1 + Workers AI · Data by{" "}
+            🔥 100% free · Cloudflare Workers + D1 + Workers AI · Spot data by{" "}
+            <a
+              href="https://open.er-api.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-brand-400 transition-colors"
+            >
+              Open ER API
+            </a>{" "}
+            · History by{" "}
             <a
               href="https://api.frankfurter.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-600 hover:text-brand-400 transition-colors"
+              className="text-slate-400 hover:text-brand-400 transition-colors"
             >
               Frankfurter API
             </a>
           </p>
-          <p>Hourly Cron (0 * * * *) · Notifications via Telegram & Discord</p>
+          <p className="text-slate-500">Hourly Cron (0 * * * *) · Notifications via Telegram & Discord</p>
         </footer>
       </main>
     </div>

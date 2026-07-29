@@ -98,11 +98,11 @@ export default function AlertStatus({ data }: AlertStatusProps) {
         </div>
 
         {/* Schedule & Notification rules */}
-        <div className="text-xs text-slate-600 border-t border-dark-700 pt-3 mt-3 space-y-1">
-          <p className="text-slate-400 font-medium">🔔 Notification Engine Rules:</p>
-          <p className="pl-3 text-slate-500">• Cron triggers automatically every hour (0 * * * *)</p>
-          <p className="pl-3 text-slate-500">• Dispatches hourly USD/INR rate + Llama 3.1 8B AI forecast</p>
-          <p className="pl-3 text-slate-500">• Triggers 🚨 NEW 6-MONTH LOW alert header if rate drops to 180-day minimum</p>
+        <div className="text-xs text-slate-500 border-t border-dark-700 pt-3 mt-3 space-y-1">
+          <p className="text-slate-300 font-medium">🔔 Notification Engine Rules:</p>
+          <p className="pl-3 text-slate-400">• Cron triggers automatically every hour (0 * * * *)</p>
+          <p className="pl-3 text-slate-400">• Dispatches hourly USD/INR rate + Llama 3.1 8B AI forecast</p>
+          <p className="pl-3 text-slate-400">• Triggers 🚨 NEW 6-MONTH LOW alert header if rate drops to 180-day minimum</p>
         </div>
       </div>
     </div>

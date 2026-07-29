@@ -131,17 +131,9 @@ export default function RateChart({ data }: RateChartProps) {
       intersect: false,
     },
     plugins: {
+      // Legend disabled — HTML legend rendered in component header above chart
       legend: {
-        display: true,
-        position: "top" as const,
-        labels: {
-          color: "#94a3b8",
-          font: { size: 12, family: "Inter" },
-          boxWidth: 20,
-          boxHeight: 2,
-          padding: 16,
-          usePointStyle: false,
-        },
+        display: false,
       },
       tooltip: {
         backgroundColor: "rgba(6, 13, 24, 0.95)",
@@ -168,10 +160,11 @@ export default function RateChart({ data }: RateChartProps) {
           drawTicks: false,
         },
         ticks: {
-          color: "#475569",
+          color: "#64748b", // slate-500 — WCAG AA compliant on dark bg
           font: { size: 11, family: "Inter" },
           maxTicksLimit: 10,
           maxRotation: 0,
+          padding: 6, // prevent x-tick clipping at canvas edge
         },
         border: { color: "rgba(22, 43, 74, 0.8)" },
       },
@@ -181,9 +174,10 @@ export default function RateChart({ data }: RateChartProps) {
           drawTicks: false,
         },
         ticks: {
-          color: "#475569",
+          color: "#64748b", // slate-500 — WCAG AA compliant on dark bg
           font: { size: 11, family: "JetBrains Mono" },
           callback: (val: string | number) => `₹${Number(val).toFixed(1)}`,
+          padding: 8, // prevent y-tick label clipping at canvas edge
         },
         border: { color: "rgba(22, 43, 74, 0.8)" },
       },

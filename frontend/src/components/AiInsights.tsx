@@ -64,7 +64,7 @@ export default function AiInsights({ data }: AiInsightsProps) {
             <p className="rate-display text-gold-400 text-2xl font-bold">
               ₹{data.predicted_lowest_rate.toFixed(2)}
             </p>
-            <p className="text-slate-600 text-xs mt-1">per 1 USD</p>
+            <p className="text-slate-400 text-xs mt-1">per 1 USD</p>
           </div>
           <div className="bg-dark-800/40 rounded-xl p-4 border border-dark-600/40">
             <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">
@@ -73,7 +73,7 @@ export default function AiInsights({ data }: AiInsightsProps) {
             <p className="text-slate-200 text-sm font-medium leading-snug">
               {data.predicted_date}
             </p>
-            <p className="text-slate-600 text-xs mt-1">30-day horizon</p>
+            <p className="text-slate-400 text-xs mt-1">30-day horizon</p>
           </div>
         </div>
 
