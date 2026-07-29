@@ -14,9 +14,15 @@ export default defineConfig({
         outDir: "dist",
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ["react", "react-dom"],
-                    charts: ["chart.js", "react-chartjs-2"],
+                manualChunks(id) {
+                    if (id.includes("node_modules")) {
+                        if (id.includes("chart.js") || id.includes("react-chartjs-2")) {
+                            return "charts";
+                        }
+                        if (id.includes("react") || id.includes("react-dom")) {
+                            return "vendor";
+                        }
+                    }
                 },
             },
         },

@@ -2,10 +2,11 @@
  * USD/INR Exchange Rate Monitor — Cloudflare Worker
  *
  * Features:
+ *  - Real-time USD/INR spot rates via Open Exchange Rates API (https://open.er-api.com/v6/latest/USD)
  *  - Hourly Cron Trigger (0 * * * *): fetch rates, run Workers AI forecast, store in D1, dispatch Telegram & Discord notifications
- *  - GET /api/dashboard  → JSON payload for the React frontend (auto-seeds if database is empty)
+ *  - GET /api/dashboard  → Real-time 24/7 payload for React frontend (auto-seeds if database is empty)
  *  - GET /health         → health-check ping
- *  - POST /__trigger_cron → manual trigger for local testing
+ *  - POST /__trigger_cron → manual trigger for testing
  */
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,6 +38,13 @@ interface FrankfurterResponse {
   rates: Record<string, { INR: number }>;
 }
 
+interface OpenErApiResponse {
+  result: string;
+  time_last_update_utc?: string;
+  time_last_update_unix?: number;
+  rates?: Record<string, number>;
+}
+
 interface AiForecast {
   predicted_lowest_rate: number;
   predicted_date_range: string;
@@ -46,6 +54,7 @@ interface AiForecast {
 interface DashboardPayload {
   current_rate: number;
   current_date: string;
+  last_updated_timestamp: string;
   six_month_low: number;
   is_at_6mo_low: boolean;
   predicted_lowest_rate: number;
@@ -58,6 +67,7 @@ interface DashboardPayload {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FRANKFURTER_BASE = "https://api.frankfurter.app";
+const OPEN_ER_API = "https://open.er-api.com/v6/latest/USD";
 const TELEGRAM_API = "https://api.telegram.org";
 const HISTORY_DAYS = 180;
 const MA_DAYS = 30;
@@ -130,9 +140,13 @@ async function runHourlyCron(env: Env): Promise<void> {
     return;
   }
 
+  // Also fetch live spot rate if available
+  const liveSpot = await fetchLiveSpotRate();
   const today = historicalRates[historicalRates.length - 1];
+  const activeSpotRate = liveSpot.rate > 0 ? liveSpot.rate : today.rate;
+
   const sixMonthLow = Math.min(...historicalRates.map((r) => r.rate));
-  const isAtLow = today.rate <= sixMonthLow + 0.01;
+  const isAtLow = activeSpotRate <= sixMonthLow + 0.01;
 
   // 2. Compute key metrics
   const recentRates = historicalRates.slice(-MA_DAYS).map((r) => r.rate);
@@ -147,10 +161,10 @@ async function runHourlyCron(env: Env): Promise<void> {
     console.log("[Cron] Workers AI forecast successfully generated.");
   } catch (err) {
     console.warn("[Cron] Workers AI call unavailable or failed. Generating rolling average fallback:", err);
-    forecast = generateFallbackForecast(historicalRates, today.rate);
+    forecast = generateFallbackForecast(historicalRates, activeSpotRate);
   }
 
-  // 4. Upsert into D1
+  // 4. Upsert snapshot into D1
   await env.DB.prepare(
     `INSERT INTO exchange_rates
        (date, rate, is_6mo_low, predicted_lowest_rate, predicted_date, ai_analysis)
@@ -164,7 +178,7 @@ async function runHourlyCron(env: Env): Promise<void> {
   )
     .bind(
       today.date,
-      today.rate,
+      activeSpotRate,
       isAtLow ? 1 : 0,
       forecast.predicted_lowest_rate,
       forecast.predicted_date_range,
@@ -185,16 +199,16 @@ async function runHourlyCron(env: Env): Promise<void> {
     await env.DB.batch(stmts);
   }
 
-  console.log(`[Cron] Stored ${historicalRates.length} rates in D1. Current Rate: ₹${today.rate}/USD`);
+  console.log(`[Cron] Stored ${historicalRates.length} rates in D1. Spot Rate: ₹${activeSpotRate}/USD`);
 
-  // 5. Hourly Notification Engine (Telegram & Discord) — Always sends hourly updates
+  // 5. Hourly Summary Notification (Telegram & Discord)
   const header = isAtLow
     ? "🚨 NEW 6-MONTH LOWEST USD/INR RATE DETECTED! 🚨"
-    : "📊 Hourly USD/INR Rate & AI Forecast Update";
+    : "📊 Hourly USD/INR Market Summary & AI Forecast";
 
   const formattedMessage = buildHourlyMessage(
     header,
-    today.rate,
+    activeSpotRate,
     sixMonthLow,
     forecast.predicted_lowest_rate,
     forecast.predicted_date_range,
@@ -207,7 +221,7 @@ async function runHourlyCron(env: Env): Promise<void> {
 
   const [telegramRes, discordRes] = await Promise.allSettled([
     sendTelegramAlert(telegramToken, telegramChatId, formattedMessage),
-    sendDiscordAlert(discordWebhook, header, today.rate, sixMonthLow, forecast),
+    sendDiscordAlert(discordWebhook, header, activeSpotRate, sixMonthLow, forecast),
   ]);
 
   const telegramSuccess = telegramRes.status === "fulfilled" && telegramRes.value;
@@ -228,6 +242,26 @@ async function runHourlyCron(env: Env): Promise<void> {
 }
 
 // ─── Data Fetching ────────────────────────────────────────────────────────────
+
+async function fetchLiveSpotRate(): Promise<{ rate: number; timestamp: string }> {
+  try {
+    const res = await fetch(OPEN_ER_API, {
+      headers: { "User-Agent": "usdinr-monitor/1.0" },
+    });
+    if (res.ok) {
+      const data: OpenErApiResponse = await res.json();
+      if (data.rates && typeof data.rates.INR === "number") {
+        return {
+          rate: parseFloat(data.rates.INR.toFixed(2)),
+          timestamp: data.time_last_update_utc || new Date().toUTCString(),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[Spot API] Failed to fetch instant rate from open.er-api.com:", err);
+  }
+  return { rate: 0, timestamp: new Date().toUTCString() };
+}
 
 async function fetchHistoricalRates(
   days: number
@@ -360,7 +394,6 @@ Based on this price action, momentum, and volatility, provide your forecast as a
     }
   }
 
-  // Strip code block wrappers if present
   text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -384,10 +417,13 @@ Based on this price action, momentum, and volatility, provide your forecast as a
   };
 }
 
-// ─── Dashboard API ────────────────────────────────────────────────────────────
+// ─── Dashboard API (24/7 Live Real-Time Payload) ──────────────────────────────
 
 async function buildDashboardPayload(env: Env): Promise<DashboardPayload> {
-  // Fetch stored history
+  // 1. Fetch live instant spot rate
+  const liveSpot = await fetchLiveSpotRate();
+
+  // 2. Fetch stored history from D1
   let historyRows = await env.DB.prepare(
     `SELECT date, rate FROM exchange_rates
      ORDER BY date DESC LIMIT 90`
@@ -395,7 +431,7 @@ async function buildDashboardPayload(env: Env): Promise<DashboardPayload> {
 
   let history = (historyRows.results ?? []).reverse();
 
-  // Auto-seed if database table is empty
+  // Auto-seed if database is empty
   if (history.length === 0) {
     console.log("[Dashboard] Database is empty. Auto-triggering seed cron process...");
     try {
@@ -410,57 +446,50 @@ async function buildDashboardPayload(env: Env): Promise<DashboardPayload> {
     }
   }
 
+  // Fallback history if database still empty
   if (history.length === 0) {
-    // Fallback if live database fetch is empty
     const liveRates = await fetchHistoricalRates(7);
     const today = liveRates[liveRates.length - 1];
-    const fallback = generateFallbackForecast(liveRates, today.rate);
+    const spotRate = liveSpot.rate > 0 ? liveSpot.rate : today.rate;
+    const fallback = generateFallbackForecast(liveRates, spotRate);
     return {
-      current_rate: today.rate,
+      current_rate: spotRate,
       current_date: today.date,
-      six_month_low: today.rate,
+      last_updated_timestamp: liveSpot.timestamp,
+      six_month_low: spotRate,
       is_at_6mo_low: false,
       predicted_lowest_rate: fallback.predicted_lowest_rate,
       predicted_date: fallback.predicted_date_range,
       ai_analysis: fallback.rationale,
       history: liveRates,
-      forecast: buildLinearForecast(today.rate, 0, FORECAST_DAYS, fallback.predicted_lowest_rate),
+      forecast: buildLinearForecast(spotRate, 0, FORECAST_DAYS, fallback.predicted_lowest_rate),
     };
   }
 
-  // Latest stored row
+  // Latest stored row for forecast metadata
   const latestRow = await env.DB.prepare(
     `SELECT * FROM exchange_rates ORDER BY date DESC LIMIT 1`
   ).first<RateRow>();
 
-  // 6-month low
+  // 6-month historical low calculation
   const sixMonthLowRow = await env.DB.prepare(
     `SELECT MIN(rate) as min_rate FROM exchange_rates
      WHERE date >= date('now', '-180 days')`
   ).first<{ min_rate: number }>();
 
   const sixMonthLow = sixMonthLowRow?.min_rate ?? history[0].rate;
-  const currentRate = latestRow?.rate ?? history[history.length - 1].rate;
+  const currentRate = liveSpot.rate > 0 ? liveSpot.rate : (latestRow?.rate ?? history[history.length - 1].rate);
   const isAtLow = currentRate <= sixMonthLow + 0.01;
 
   let predictedLowest = latestRow?.predicted_lowest_rate ?? null;
   let predictedDate = latestRow?.predicted_date ?? null;
   let aiAnalysis = latestRow?.ai_analysis ?? null;
 
-  // Guarantee that predictions are never null
   if (predictedLowest === null || predictedDate === null || aiAnalysis === null) {
     const fallback = generateFallbackForecast(history, currentRate);
     predictedLowest = predictedLowest ?? fallback.predicted_lowest_rate;
     predictedDate = predictedDate ?? fallback.predicted_date_range;
     aiAnalysis = aiAnalysis ?? fallback.rationale;
-
-    if (latestRow?.date) {
-      await env.DB.prepare(
-        `UPDATE exchange_rates
-         SET predicted_lowest_rate = ?, predicted_date = ?, ai_analysis = ?
-         WHERE date = ?`
-      ).bind(predictedLowest, predictedDate, aiAnalysis, latestRow.date).run();
-    }
   }
 
   const velocity = computeVelocity(history);
@@ -474,6 +503,7 @@ async function buildDashboardPayload(env: Env): Promise<DashboardPayload> {
   return {
     current_rate: currentRate,
     current_date: latestRow?.date ?? history[history.length - 1].date,
+    last_updated_timestamp: liveSpot.timestamp,
     six_month_low: parseFloat(sixMonthLow.toFixed(2)),
     is_at_6mo_low: isAtLow,
     predicted_lowest_rate: predictedLowest,
@@ -534,11 +564,11 @@ function buildHourlyMessage(
   return [
     header,
     "",
-    `💵 Current 1 USD: ₹${currentRate.toFixed(2)}`,
-    `📉 6-Month Lowest Rate: ₹${sixMonthLow.toFixed(2)}`,
-    `🔮 AI Predicted Lowest Rate: ₹${predictedLowestRate.toFixed(2)} (Target: ${predictedDateRange})`,
+    `💵 Spot Rate (1 USD): ₹${currentRate.toFixed(2)}`,
+    `📉 6-Month Historical Low: ₹${sixMonthLow.toFixed(2)}`,
+    `🔮 AI Predicted Low: ₹${predictedLowestRate.toFixed(2)} (Target: ${predictedDateRange})`,
     "",
-    `💡 AI Rationale: ${aiRationale}`,
+    `💡 1-Hour Market Summary: ${aiRationale}`,
   ].join("\n");
 }
 
@@ -595,13 +625,13 @@ async function sendDiscordAlert(
       title: header,
       color: currentRate <= sixMonthLow + 0.01 ? 0x00ff88 : 0x0ea5e9,
       fields: [
-        { name: "💵 Current 1 USD", value: `₹${currentRate.toFixed(2)}`, inline: true },
-        { name: "📉 6-Month Lowest Rate", value: `₹${sixMonthLow.toFixed(2)}`, inline: true },
+        { name: "💵 Spot Rate (1 USD)", value: `₹${currentRate.toFixed(2)}`, inline: true },
+        { name: "📉 6-Month Historical Low", value: `₹${sixMonthLow.toFixed(2)}`, inline: true },
         { name: "🔮 AI Predicted Low", value: `₹${forecast.predicted_lowest_rate.toFixed(2)}`, inline: true },
         { name: "📅 Expected Target Range", value: forecast.predicted_date_range, inline: false },
-        { name: "💡 AI Rationale", value: forecast.rationale, inline: false },
+        { name: "💡 1-Hour Market Summary", value: forecast.rationale, inline: false },
       ],
-      footer: { text: "USD/INR Hourly Edge Monitor • " + new Date().toUTCString() },
+      footer: { text: "RupeeCheck-AI Live Spot Monitor • " + new Date().toUTCString() },
     };
 
     const res = await fetch(webhookUrl, {

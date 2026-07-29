@@ -56,7 +56,7 @@ function RefreshIcon({ spinning }: { spinning: boolean }) {
 // ── App ────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const { data, loading, error, lastUpdated, refresh } = useDashboard();
+  const { data, loading, error, lastUpdated, secondsAgo, refresh } = useDashboard();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -76,9 +76,9 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-white font-bold text-lg leading-tight">
-                USD/INR Monitor
+                RupeeCheck-AI
               </h1>
-              <p className="text-slate-500 text-xs">Powered by Cloudflare Workers AI</p>
+              <p className="text-slate-500 text-xs">Real-Time USD/INR Edge Tracking & Forecasts</p>
             </div>
           </div>
 
@@ -86,12 +86,10 @@ export default function App() {
             {/* Live indicator */}
             {data && !loading && (
               <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-                <span className="live-dot">Live</span>
-                {lastUpdated && (
-                  <span className="text-slate-600">
-                    Updated {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
+                <span className="live-dot text-emerald-400 font-semibold">● Live (30s)</span>
+                <span className="text-slate-500" title={lastUpdated ? `Last fetched at ${lastUpdated.toLocaleTimeString()}` : undefined}>
+                  Updated {secondsAgo}s ago
+                </span>
               </div>
             )}
 
