@@ -1,196 +1,141 @@
 <div align="center">
 
-# 🇮🇳 RupeeCheck-AI
-### 24/7 Real-Time USD/INR Edge Tracking & AI Low-Rate Forecasting
+# 💵 RupeeCheck-AI
+### Real-Time 24/7 USD/INR Spot Tracking, Edge AI Forecasting & Multi-Channel Alert Engine
 
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare_Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
-[![Cloudflare D1](https://img.shields.io/badge/Cloudflare_D1-F38020?style=for-the-badge&logo=sqlite&logoColor=white)](https://developers.cloudflare.com/d1/)
-[![Workers AI](https://img.shields.io/badge/Workers_AI-Llama_3.1_8B-FF4500?style=for-the-badge&logo=meta&logoColor=white)](https://developers.cloudflare.com/workers-ai/)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](./LICENSE)
+[![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=for-the-badge&logo=cloudflare)](https://workers.cloudflare.com/)
+[![Cloudflare D1](https://img.shields.io/badge/Cloudflare-D1_SQLite-F38020?style=for-the-badge&logo=sqlite)](https://developers.cloudflare.com/d1/)
+[![Workers AI](https://img.shields.io/badge/Workers_AI-Llama_3.1_8B-FF4500?style=for-the-badge&logo=meta)](https://developers.cloudflare.com/workers-ai/)
+[![Vite 8](https://img.shields.io/badge/Vite-8.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0-38BDF8?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
+[![Impeccable Design](https://img.shields.io/badge/UI%2FUX-Impeccable_Verified-00C7B7?style=for-the-badge)](https://github.com/impeccable/impeccable)
 
-<br />
-
-> An enterprise-grade, 24/7 live serverless edge web application that tracks real-time USD/INR exchange rates with 30-second client-side polling, forecasts 30-day rate lows using edge LLMs, renders a live glassmorphism analytics dashboard, and dispatches automated hourly market summary notifications to Telegram and Discord—operating 100% within Cloudflare's free tier.
+An enterprise-grade, 100% free-tier serverless edge application that monitors real-time USD/INR exchange rates, projects 30-day rate minimums using edge LLMs with deterministic mathematical fallbacks, and dispatches automated hourly summaries to Telegram and Discord.
 
 </div>
 
 ---
 
-## 📐 System Architecture
+## 🏗️ System Architecture
 
 ```mermaid
-flowchart TD
-    subgraph Data Sources [FX Data Providers]
-        OpenER["⚡ Open Exchange Rates API\n(Instant Real-Time Spot Rate)"]
-        Frankfurter["🌐 Frankfurter FX API\n(180-Day Price History)"]
-    end
-
-    subgraph Edge Cron & Backend [Cloudflare Workers Isolate]
-        Cron["⏰ Hourly Cron Trigger (0 * * * *)"] --> Frankfurter
-        Cron --> OpenER
-        Cron --> Analytics["📊 Analytics Engine (MA30, Velocity, Volatility, 6Mo Low)"]
-        Analytics --> AI{"🤖 Cloudflare Workers AI\n(Llama 3.1 8B Instruct)"}
-        
-        AI -- Success --> Parser["🧹 Markdown Codeblock Stripper & JSON Parser"]
-        AI -- Error / Timeout --> Fallback["🧮 30-Day Moving Average & Momentum Math Fallback"]
-        
-        Parser --> D1["💾 Cloudflare D1 Serverless SQLite\n(exchange_rates & alert_log)"]
-        Fallback --> D1
-        
-        D1 --> Dispatcher["📣 Multi-Channel Hourly Notification Engine"]
-        Dispatcher --> Telegram["✈️ Telegram Bot API"]
-        Dispatcher --> Discord["🎮 Discord Webhooks"]
-    end
-
-    subgraph Edge Client [Cloudflare Pages & Custom Domain]
-        Dashboard["🖥️ React 19 Dashboard\n(Chart.js + Tailwind CSS)"] --> Polling["🔄 30-Second Live Polling Loop"]
-        Polling --> API["🔌 GET /api/dashboard"]
-        API --> OpenER
-        API --> D1
-    end
+graph TD
+    A[Open Exchange Rates API] -->|Real-Time Spot FX| B[Cloudflare Worker Edge API]
+    C[Frankfurter API] -->|180-Day History| B
+    B -->|Hourly Cron Schedule 0 * * * *| D[Analytics Engine & Velocity Calc]
+    D -->|Prompts Metrics| E[Cloudflare Workers AI Llama 3.1 8B]
+    E -->|JSON Forecast Rationale| F[Cloudflare D1 Database]
+    D -->|Fallback: MA30 + Momentum| F
+    
+    B -->|GET /api/dashboard| G[React 19 Dashboard]
+    G -->|30-Second Auto-Polling| B
+    
+    B -->|Hourly Summary Webhooks| H[Telegram Bot API]
+    B -->|Hourly Summary Webhooks| I[Discord Webhook API]
 ```
 
 ---
 
-## 🧠 Engineering Highlights & Architecture Trade-offs
+## ✨ Core Features
 
-### 1. 24/7 Live 30-Second Polling & Edge Architecture
-- **Instant FX Spot Fetching:** Integrates Open ER API (`https://open.er-api.com/v6/latest/USD`) to provide real-time USD/INR spot rates on every frontend poll.
-- **Continuous Client Synchronization:** Custom React 19 `useDashboard` hook executes a 30-second polling interval with a live `"● Live (30s)"` pulse badge and relative `"Updated Xs ago"` ticker.
-- **Zero Cold Starts:** Powered by Cloudflare Workers V8 isolates, delivering sub-5ms API response latencies with zero server maintenance costs.
-
-### 2. AI Reliability & Deterministic Fallback Engine
-- **Hybrid LLM Forecasting:** Primary market rationale generated by `@cf/meta/llama-3.1-8b-instruct` on Workers AI to produce 1-hour market summaries and 30-day rate low forecasts.
-- **Guaranteed Zero-Null Failover:** If LLM inference times out or fails, a deterministic 30-day rolling moving average + price momentum model generates predictions. Stored data is **never null**.
-
-### 3. Quantitative Financial Analytics
-- **Statistical Metric Suite:** Processes 180 days of price action to calculate 30-day simple moving averages ($MA_{30}$), 7-day rate velocity ($\Delta / 7\text{d}$), and price volatility ($\sigma$).
-- **Floor Low Detection:** Identifies 180-day historical minimums and triggers high-priority alert headers (`🚨 NEW 6-MONTH LOWEST USD/INR RATE DETECTED! 🚨`) when spot rates touch historical floors.
-
-### 4. Non-Blocking Multi-Channel Notification Engine
-- **Parallel Dispatch:** Uses `Promise.allSettled` to execute non-blocking concurrent HTTP POST requests to Telegram Bot API and Discord Webhooks every hour.
-- **Audit Logging:** Logs notification delivery status (`success` | `failed`) along with message payloads into D1 database `alert_log` table for observability.
+* **24/7 Real-Time Spot Polling:** Instant USD/INR spot rates fetched dynamically from Open Exchange Rates API with 30-second client-side auto-polling.
+* **Edge LLM Intelligence:** Powered by Meta's `@cf/meta/llama-3.1-8b-instruct` on Cloudflare Workers AI for 1-hour market summaries and target rate projections.
+* **Deterministic Fallback Pipeline:** Zero-downtime guarantee utilizing a rolling 30-day moving average and 7-day rate momentum if AI execution times out.
+* **Impeccable Dark Glassmorphism UI:** Built with React 19, Vite 8 (Rolldown bundler), and Tailwind CSS v4, audited against WCAG AA color contrast standards.
+* **Multi-Channel Alert Dispatcher:** Automated hourly market updates delivered directly to Telegram and Discord channels.
+* **100% Free Tier Optimized:** Efficient architecture remaining well under Cloudflare Free Tier daily execution limits.
 
 ---
 
-## 🛠️ Tech Stack Matrix
+## 🛠️ Technology Stack Matrix
 
-| Layer | Technology | Primary Function |
-|---|---|---|
-| **Backend Compute** | Cloudflare Workers | Serverless V8 isolate execution, cron scheduling, CORS preflight, HTTP API |
-| **Spot Data API** | Open Exchange Rates API | Instant real-time USD/INR spot rates (`open.er-api.com`) |
-| **Historical Data API** | Frankfurter API | 180-day daily historical FX price history (`api.frankfurter.app`) |
-| **Database** | Cloudflare D1 | Serverless SQLite relational storage (`exchange_rates`, `alert_log`) |
-| **AI / Machine Learning** | Cloudflare Workers AI | Llama 3.1 8B Instruct model running on Cloudflare edge GPUs |
-| **Frontend Framework** | React 19 + Vite 5 | SPA with 30-second polling loop, memoized components, type-safe environment variables |
-| **Data Visualization** | Chart.js 4 + react-chartjs-2 | Interactive dual-series rate trajectory chart (History + AI Forecast) |
-| **Styling** | Tailwind CSS 3 | Modern dark-mode UI with glassmorphic cards, glow badges, CSS animations |
-| **Infrastructure / CLI** | Wrangler CLI 3 | Declarative bindings, local D1 SQLite emulators, secret management |
-
----
-
-## 💻 Local Development Guide
-
-### Prerequisites
-- **Node.js**: `v18.0.0` or higher
-- **npm**: `v9.0.0` or higher
-- **Cloudflare Account**: Free tier wrangler login
-
-### Step-by-Step Setup
-
-1. **Clone & Install Dependencies:**
-   ```bash
-   git clone https://github.com/<your-username>/usdinr-monitor.git
-   cd usdinr-monitor
-   
-   # Install Worker dependencies
-   npm install
-   
-   # Install Frontend dependencies
-   cd frontend && npm install && cd ..
-   ```
-
-2. **Configure Local Environment Secrets:**
-   Copy `.dev.vars.example` to `.dev.vars` and add your test Telegram/Discord credentials:
-   ```bash
-   cp .dev.vars.example .dev.vars
-   ```
-   *Edit `.dev.vars`:*
-   ```env
-   TELEGRAM_TOKEN="YOUR_TELEGRAM_TOKEN"
-   TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
-   DISCORD_WEBHOOK="https://discord.com/api/webhooks/YOUR/DISCORD_WEBHOOK_URL"
-   ```
-
-3. **Initialize Local Database:**
-   ```bash
-   npx wrangler d1 execute usdinr-db --local --file=./schema.sql
-   ```
-
-4. **Start Local Development Servers:**
-   ```bash
-   # Terminal 1 — Worker API Backend (localhost:8787)
-   npx wrangler dev
-
-   # Terminal 2 — React Dashboard (localhost:5173)
-   cd frontend && npm run dev
-   ```
-
-5. **Trigger Local Cron Manual Execution:**
-   ```bash
-   curl -X POST http://localhost:8787/__trigger_cron
-   ```
+| Component | Technology | Role |
+| --- | --- | --- |
+| **Compute** | Cloudflare Workers (TypeScript) | Edge API & Cron Trigger Execution |
+| **Database** | Cloudflare D1 | Serverless SQLite for Rate Snapshots & Alert Logs |
+| **AI Engine** | Workers AI (Llama 3.1 8B Instruct) | Market Analysis & Lowest Rate Predictions |
+| **Frontend** | React 19 + Vite 8 + Tailwind v4 | High-Contrast Glassmorphism Dashboard |
+| **Design Audit** | Impeccable Design Harness | Automated UI/UX Anti-Pattern & Accessibility Checks |
+| **Spot Data** | Open Exchange Rates API | Real-Time FX Rates |
+| **Historical Data** | Frankfurter Exchange Rate API | 180-Day Daily Historical FX Rates |
+| **Notifications** | Telegram Bot API & Discord Webhook | Hourly Summary Delivery |
 
 ---
 
-## 🚀 Production Deployment
+## 🚀 Quick Start & Local Development
 
-### 1. Create Cloudflare D1 Database
+### 1. Prerequisites
+
+* Node.js `^22.0.0`
+* npm `^10.0.0`
+* Cloudflare Wrangler CLI `v4.x`
+
+### 2. Backend Setup
+
 ```bash
-npx wrangler d1 create usdinr-db
+# Clone the repository
+git clone https://github.com/SubharupBiswas/RupeeCheck-AI.git
+cd RupeeCheck-AI
+
+# Install backend dependencies
+npm install
+
+# Create local secrets file (Copy example)
+cp .dev.vars.example .dev.vars
 ```
-*Update `database_id` in `wrangler.json` with the returned database ID.*
 
-### 2. Apply Production Database Schema
+Edit `.dev.vars` with your API credentials:
+
+```env
+TELEGRAM_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+DISCORD_WEBHOOK="YOUR_DISCORD_WEBHOOK_URL"
+```
+
+### 3. Frontend Setup
+
 ```bash
+cd frontend
+
+# Install frontend dependencies
+npm install
+
+# Start local development server
+npm run dev
+```
+
+---
+
+## 📦 Deployment Instructions
+
+### Deploy Cloudflare Worker Backend
+
+```bash
+# Apply D1 schema migration
 npx wrangler d1 execute usdinr-db --file=./schema.sql
-```
 
-### 3. Set Production Environment Secrets
-```bash
+# Set production secrets
 npx wrangler secret put TELEGRAM_TOKEN
 npx wrangler secret put TELEGRAM_CHAT_ID
 npx wrangler secret put DISCORD_WEBHOOK
-```
 
-### 4. Deploy Backend & Frontend
-```bash
-# Deploy Cloudflare Worker Backend
+# Deploy worker
 npx wrangler deploy
-
-# Build & Deploy React Frontend to Cloudflare Pages
-cd frontend
-npm run build
-npx wrangler pages deploy dist --project-name=usdinr-monitor
 ```
 
-> **Cloudflare Pages Environment Variable:**
-> Configure `VITE_API_URL` in Cloudflare Pages dashboard (Settings → Environment Variables) pointing to your deployed Worker API URL (e.g. `https://usdinr-monitor.<your-subdomain>.workers.dev`) for seamless API resolution.
+### Deploy Frontend to Cloudflare Pages
+
+1. Connect your GitHub repository to **Cloudflare Pages**.
+2. Configure build settings:
+* **Framework preset:** `Vite`
+* **Build command:** `npm run build`
+* **Build output directory:** `dist`
+* **Root directory:** `frontend`
+
+3. Add Environment Variable in Pages Dashboard:
+* `VITE_API_URL` = `https://<YOUR_WORKER_SUBDOMAIN>.workers.dev`
 
 ---
 
-## 🔒 Security & Privacy Considerations
-
-- **Secret Isolation:** Environment keys (`TELEGRAM_TOKEN`, `DISCORD_WEBHOOK`) are injected at runtime via Cloudflare Environment Bindings and `.dev.vars`. No raw keys exist in source control.
-- **Git Hygiene:** Root `.gitignore` explicitly excludes `.dev.vars`, `.env*`, `.wrangler/`, build directories (`dist/`, `build/`), and system logs.
-- **CORS Safety:** API endpoints strictly return standardized CORS headers for browser compatibility (`rupee.subnetmask.tech`, `rupeecheck-ai.pages.dev`).
-- **Database Sanitization:** SQL queries use parameterized binding via D1 Prepared Statements to prevent SQL injection vulnerabilities.
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for details.
+Built with Cloudflare Workers AI & Impeccable UI/UX Standards
