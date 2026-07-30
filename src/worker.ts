@@ -91,7 +91,7 @@ export default {
     }
 
     if (url.pathname === "/health") {
-      return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
+      return new Response(JSON.stringify({ status: "ok", timestamp: getISTFormattedString() }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
@@ -253,14 +253,14 @@ async function fetchLiveSpotRate(): Promise<{ rate: number; timestamp: string }>
       if (data.rates && typeof data.rates.INR === "number") {
         return {
           rate: parseFloat(data.rates.INR.toFixed(2)),
-          timestamp: data.time_last_update_utc || new Date().toUTCString(),
+          timestamp: getISTFormattedString(),
         };
       }
     }
   } catch (err) {
     console.warn("[Spot API] Failed to fetch instant rate from open.er-api.com:", err);
   }
-  return { rate: 0, timestamp: new Date().toUTCString() };
+  return { rate: 0, timestamp: getISTFormattedString() };
 }
 
 async function fetchHistoricalRates(
@@ -324,11 +324,12 @@ function generateFallbackForecast(
   d2.setDate(d2.getDate() + 15);
   const predicted_date_range = `${formatDate(d1)} to ${formatDate(d2)}`;
 
+  const istNow = getISTFormattedString();
   const trendDesc = velocity <= 0
     ? "demonstrating steady strength against the USD"
     : "showing mild consolidation pressure";
 
-  const rationale = `The USD/INR pair is currently ${trendDesc} with a 30-day moving average of ₹${ma30.toFixed(2)}. Technical momentum analysis indicates a potential localized rate low near ₹${predicted_lowest_rate.toFixed(2)} over the next 2-3 weeks.`;
+  const rationale = `As of ${istNow}, the USD/INR pair is ${trendDesc} with a 30-day moving average of ₹${ma30.toFixed(2)}. Technical momentum analysis indicates a potential localized rate low near ₹${predicted_lowest_rate.toFixed(2)} over the next 2-3 weeks.`;
 
   return {
     predicted_lowest_rate,
@@ -354,34 +355,41 @@ async function runAiForecast(
   const sixMonthLow = Math.min(...rates.map((r) => r.rate));
   const sixMonthHigh = Math.max(...rates.map((r) => r.rate));
   const currentRate = rates[rates.length - 1].rate;
+  const previousRate = rates.length >= 2 ? rates[rates.length - 2].rate : currentRate;
+  const hourlyDelta = currentRate - previousRate;
+  const istNow = getISTFormattedString();
 
-  const prompt = `You are a financial analyst specializing in foreign exchange markets. Analyze the USD/INR exchange rate data below and provide a short-term forecast.
-
-## Current Market Data
-- Current USD/INR Rate: ${currentRate.toFixed(2)}
-- 30-Day Moving Average: ${movingAverage.toFixed(2)}
-- 7-Day Price Velocity: ${velocity > 0 ? "+" : ""}${velocity} INR/day (${velocity > 0 ? "USD strengthening" : "USD weakening"})
-- 30-Day Volatility (Std Dev): ${volatility}
-- 6-Month Low: ${sixMonthLow.toFixed(2)}
-- 6-Month High: ${sixMonthHigh.toFixed(2)}
+  const prompt = `You are a professional FX market analyst writing an hourly USD/INR market update.
+Timestamp: ${istNow}
+Current USD/INR Spot: ₹${currentRate.toFixed(2)}
+1-Hour Shift: ${hourlyDelta > 0 ? "+" : ""}${hourlyDelta.toFixed(3)} INR (${hourlyDelta > 0 ? "USD strengthening" : hourlyDelta < 0 ? "USD weakening" : "stable"})
+30-Day Average: ₹${movingAverage.toFixed(2)}
+7-Day Velocity: ${velocity > 0 ? "+" : ""}${velocity} INR/day
+30-Day Volatility: ${volatility}
+6-Month Range: ₹${sixMonthLow.toFixed(2)} - ₹${sixMonthHigh.toFixed(2)}
 
 ## Last 30 Days Price Action (USD/INR)
 ${ratesSummary}
 
 ## Instructions
-Based on this price action, momentum, and volatility, provide your forecast as a JSON object ONLY (no explanation outside JSON):
+Write a fresh, natural 2-sentence market commentary on the hourly shift and technical trend.
+DO NOT use boilerplate repetitive phrases. Be direct, analytical, and specific to the price action.
+Return JSON strictly formatted (no markdown code blocks):
 
 {
-  "predicted_lowest_rate": <number: the estimated lowest USD/INR rate in the next 30 days, e.g. 83.50>,
+  "predicted_lowest_rate": <number: estimated lowest USD/INR rate in next 30 days, e.g. 83.50>,
   "predicted_date_range": "<string: estimated date range, e.g. '2026-08-10 to 2026-08-17'>",
-  "rationale": "<string: exactly 2 sentences explaining the market trend and your reasoning>"
+  "rationale": "<string: your fresh 2-sentence market commentary>"
 }`;
+
+  // Dynamic temperature between 0.6 and 0.8 to ensure varied, non-cached rationale outputs
+  const dynamicTemperature = parseFloat((0.6 + Math.random() * 0.2).toFixed(2));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiResponse = await (ai as any).run("@cf/meta/llama-3.1-8b-instruct", {
     prompt,
     max_tokens: 350,
-    temperature: 0.3,
+    temperature: dynamicTemperature,
   });
 
   let text = "";
@@ -561,8 +569,10 @@ function buildHourlyMessage(
   predictedDateRange: string,
   aiRationale: string
 ): string {
+  const istNow = getISTFormattedString();
   return [
     header,
+    `⏰ ${istNow}`,
     "",
     `💵 Spot Rate (1 USD): ₹${currentRate.toFixed(2)}`,
     `📉 6-Month Historical Low: ₹${sixMonthLow.toFixed(2)}`,
@@ -631,7 +641,7 @@ async function sendDiscordAlert(
         { name: "📅 Expected Target Range", value: forecast.predicted_date_range, inline: false },
         { name: "💡 1-Hour Market Summary", value: forecast.rationale, inline: false },
       ],
-      footer: { text: "RupeeCheck-AI Live Spot Monitor • " + new Date().toUTCString() },
+      footer: { text: "RupeeCheck-AI Live Spot Monitor • " + getISTFormattedString() },
     };
 
     const res = await fetch(webhookUrl, {
@@ -654,6 +664,17 @@ async function sendDiscordAlert(
 }
 
 // ─── Utility Helpers ──────────────────────────────────────────────────────────
+
+function getISTFormattedString(date: Date = new Date()): string {
+  return (
+    date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "medium",
+      timeStyle: "short",
+      hour12: true,
+    }) + " IST"
+  );
+}
 
 function formatDate(d: Date): string {
   return d.toISOString().split("T")[0];
